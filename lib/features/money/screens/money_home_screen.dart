@@ -4,7 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/utils/formatters.dart';
+import '../../water/models/water_models.dart';
+import '../../water/services/water_notification_service.dart';
 import '../controllers/money_controller.dart';
+import '../services/finance_notification_service.dart';
 import '../data/money_repository.dart';
 import '../models/transaction_models.dart';
 import '../widgets/category_icon.dart';
@@ -84,6 +87,9 @@ class _MoneyHomeScreenState extends ConsumerState<MoneyHomeScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 16),
+        const _DailyReminderCard(),
+        const SizedBox(height: 24),
       ],
     );
   }
@@ -373,5 +379,130 @@ class _TransactionList extends ConsumerWidget {
     final net = list.fold<double>(
         0, (s, t) => s + (t.type == TxType.income ? t.amount : -t.amount));
     return '${net >= 0 ? '+' : '−'}${formatVndCompact(net.abs())}';
+  }
+}
+
+/// Card cấu hình thông báo nhắc nhập thu chi hằng ngày.
+class _DailyReminderCard extends StatefulWidget {
+  const _DailyReminderCard();
+
+  @override
+  State<_DailyReminderCard> createState() => _DailyReminderCardState();
+}
+
+class _DailyReminderCardState extends State<_DailyReminderCard> {
+  bool _enabled = false;
+  TimeOfDay2 _time = const TimeOfDay2(21, 0);
+  bool _loaded = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final cfg = await FinanceNotificationService.instance.load();
+    if (mounted) {
+      setState(() {
+        _enabled = cfg.enabled;
+        _time = cfg.time;
+        _loaded = true;
+      });
+    }
+  }
+
+  Future<void> _toggle(bool value) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      if (value) {
+        // Xin quyền notification + exact alarm trước khi lên lịch.
+        await WaterNotificationService.instance.requestPermissions();
+      }
+      await FinanceNotificationService.instance.setEnabled(value);
+      if (mounted) {
+        setState(() => _enabled = value);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(value
+              ? 'Đã bật nhắc nhập thu chi lúc ${_time.label} hằng ngày'
+              : 'Đã tắt nhắc nhập thu chi'),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Không lưu được: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: _time.hour, minute: _time.minute),
+      helpText: 'Giờ nhắc nhập thu chi mỗi ngày',
+    );
+    if (picked == null) return;
+    final t = TimeOfDay2(picked.hour, picked.minute);
+    setState(() => _time = t);
+    if (_enabled) {
+      await FinanceNotificationService.instance.setTime(t);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Đã đổi giờ nhắc thành ${t.label}')));
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.edit_calendar_outlined,
+                    color: theme.colorScheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text('Nhắc nhập thu chi hằng ngày',
+                      style: theme.textTheme.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                ),
+                Switch(
+                  value: _enabled,
+                  onChanged: _loaded ? _toggle : null,
+                ),
+              ],
+            ),
+            if (_enabled) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Thông báo mỗi ngày lúc ${_time.label} để ghi sổ.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                  OutlinedButton(
+                    onPressed: _busy ? null : _pickTime,
+                    child: Text('Đổi giờ (${_time.label})'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 }

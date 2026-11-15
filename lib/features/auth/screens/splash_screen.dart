@@ -11,22 +11,31 @@ class SplashScreen extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Icon(
-                Icons.favorite_rounded,
-                size: 44,
-                color: Theme.of(context).colorScheme.primary,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Image.asset(
+                'assets/icon/app_icon_rounded.png',
+                width: 96,
+                height: 96,
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => Container(
+                  width: 88,
+                  height: 88,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Icon(
+                    Icons.favorite_rounded,
+                    size: 44,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 20),
             Text(
-              'Vita',
+              'GTBrain',
               style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: Theme.of(context).colorScheme.primary,

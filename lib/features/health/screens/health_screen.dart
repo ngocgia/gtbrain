@@ -15,7 +15,9 @@ class HealthScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final device = ref.watch(deviceConnectionProvider);
-    final today = DateTime.now();
+    // Key đầu-ngày ổn định — dùng DateTime.now() (chứa giờ/giây) sẽ tạo
+    // provider mới mỗi rebuild → fetch lại vô hạn → dữ liệu không bao giờ hiện.
+    final today = startOfDay(DateTime.now());
     final activities = ref.watch(dayActivitiesProvider(today));
     final profile = ref.watch(profileProvider).value;
 
@@ -26,12 +28,21 @@ class HealthScreen extends ConsumerWidget {
     );
     final deviceKcal =
         device.maybeWhen(data: (d) => d.today.activeCalories, orElse: () => 0);
+    final deviceSteps =
+        device.maybeWhen(data: (d) => d.today.steps, orElse: () => 0);
+    final connected =
+        device.maybeWhen(data: (d) => d.authorized, orElse: () => false);
     final tdeeValue = profile?.tdeeValue;
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         _DeviceCard(deviceAsync: device),
+        // Đã kết nối nhưng chưa có dữ liệu → Health Connect thiếu app nguồn.
+        if (connected && deviceSteps == 0 && deviceKcal == 0) ...[
+          const SizedBox(height: 12),
+          _NoDataSourceCard(),
+        ],
         const SizedBox(height: 16),
         Row(
           children: [
@@ -209,13 +220,54 @@ class _DeviceCard extends ConsumerWidget {
                       )
                     : FilledButton(
                         onPressed: () async {
-                          final ok = await ref
+                          final result = await ref
                               .read(healthControllerProvider.notifier)
                               .connectDevice();
-                          if (!ok && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text(
-                                    'Chưa cấp quyền đọc dữ liệu sức khỏe')));
+                          if (!context.mounted) return;
+                          switch (result) {
+                            case ConnectResult.needInstall:
+                              // Android ≤13: chưa cài / cần cập nhật Health Connect.
+                              showDialog<void>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Cần cài Health Connect'),
+                                  content: const Text(
+                                      'Điện thoại chưa có app Health Connect '
+                                      '(hoặc phiên bản quá cũ).\n\n'
+                                      'Bấm "Cài ngay" để mở Google Play, cài xong '
+                                      'quay lại app và bấm Kết nối lần nữa.'),
+                                  actions: [
+                                    TextButton(
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text('Để sau')),
+                                    FilledButton(
+                                      onPressed: () {
+                                        Navigator.pop(ctx);
+                                        ref
+                                            .read(
+                                                healthControllerProvider.notifier)
+                                            .openHealthConnectInstall();
+                                      },
+                                      child: const Text('Cài ngay'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            case ConnectResult.permissionDenied:
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Chưa cấp quyền đọc dữ liệu sức khỏe. '
+                                      'Bấm Kết nối và chọn "Cho phép" tất cả mục.'),
+                                  duration: Duration(seconds: 4),
+                                ),
+                              );
+                            case ConnectResult.connected:
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text(
+                                        'Đã kết nối dữ liệu sức khỏe ✅')),
+                              );
                           }
                         },
                         child: const Text('Kết nối'),
@@ -330,6 +382,51 @@ class _ActivityTile extends ConsumerWidget {
         trailing: Text(
           '${activity.caloriesBurned} kcal',
           style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+}
+
+/// Health Connect chỉ là "kho trung chuyển" — cần app nguồn ghi dữ liệu vào.
+/// Card này hiện khi đã kết nối nhưng chưa đọc được gì.
+class _NoDataSourceCard extends StatelessWidget {
+  const _NoDataSourceCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.4),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info_outline, color: theme.colorScheme.tertiary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Đã kết nối nhưng chưa có dữ liệu?',
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Health Connect chỉ là nơi LƯU TRUNG CHUYỂN — cần một app ghi số '
+              'bước chân vào đó:\n'
+              '1. Cài Google Fit (hoặc Samsung Health / Mi Fitness / app sức '
+              'khỏe của hãng điện thoại)\n'
+              '2. Đăng nhập app đó và bật đồng bộ với Health Connect\n'
+              '3. Đi bộ vài phút rồi bấm "Làm mới" ở trên',
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
         ),
       ),
     );

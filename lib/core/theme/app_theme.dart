@@ -1,13 +1,29 @@
 import 'package:material_ui/material_ui.dart';
 
-/// Theme Material 3 cho toàn app — tông xanh lá (sức khỏe) hiện đại.
+/// Theme Material 3 cho toàn app — màu chủ đạo tùy chọn (mặc định xanh lá).
 class AppTheme {
-  static const seedColor = Color(0xFF2E7D32);
+  /// Màu mặc định (xanh lá — sức khỏe).
+  static const defaultSeed = Color(0xFF2E7D32);
 
-  static ThemeData get light => _build(Brightness.light);
-  static ThemeData get dark => _build(Brightness.dark);
+  /// Các màu chủ đạo chọn sẵn.
+  static const presetSeeds = <int, (Color, String)>{
+    0xFF2E7D32: (Color(0xFF2E7D32), 'Xanh lá'),
+    0xFF1565C0: (Color(0xFF1565C0), 'Xanh dương'),
+    0xFF6A1B9A: (Color(0xFF6A1B9A), 'Tím'),
+    0xFFEF6C00: (Color(0xFFEF6C00), 'Cam'),
+    0xFFC2185B: (Color(0xFFC2185B), 'Hồng đậm'),
+    0xFF00838F: (Color(0xFF00838F), 'Xanh ngọc'),
+    0xFFB71C1C: (Color(0xFFB71C1C), 'Đỏ'),
+    0xFF4E342E: (Color(0xFF4E342E), 'Nâu'),
+  };
 
-  static ThemeData _build(Brightness brightness) {
+  /// Theme sáng theo màu chủ đạo [seed].
+  static ThemeData lightFromSeed(Color seed) => _build(seed, Brightness.light);
+
+  /// Theme tối theo màu chủ đạo [seed].
+  static ThemeData darkFromSeed(Color seed) => _build(seed, Brightness.dark);
+
+  static ThemeData _build(Color seedColor, Brightness brightness) {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: brightness,
@@ -43,7 +59,10 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(48),
+          // KHÔNG dùng Size.fromHeight(48) — width vô hạn làm vỡ Row
+          // (nút nuốt hết bề ngang, ép text thành hàng dọc).
+          minimumSize: const Size(64, 48),
+          padding: const EdgeInsets.symmetric(horizontal: 18),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),

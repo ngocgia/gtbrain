@@ -21,6 +21,13 @@ class DailyDeviceHealth {
   static const empty = DailyDeviceHealth();
 }
 
+/// Kết quả khi kết nối thiết bị.
+enum ConnectResult {
+  connected, // OK — đã cấp quyền
+  permissionDenied, // user từ chối quyền
+  needInstall, // Health Connect chưa cài / cần cập nhật (Android ≤13)
+}
+
 /// Wrapper đọc dữ liệu Health Connect (Android) / Apple Health (iOS).
 class HealthDeviceService {
   Health? _health;
@@ -34,6 +41,14 @@ class HealthDeviceService {
     HealthDataType.DISTANCE_WALKING_RUNNING,
   ];
 
+  static const _readAccess = [
+    HealthDataAccess.READ,
+    HealthDataAccess.READ,
+    HealthDataAccess.READ,
+    HealthDataAccess.READ,
+    HealthDataAccess.READ,
+  ];
+
   Future<Health> get _instance async {
     final existing = _health;
     if (existing != null) return existing;
@@ -44,38 +59,64 @@ class HealthDeviceService {
 
   bool get isSupportedPlatform => Platform.isAndroid || Platform.isIOS;
 
+  /// Kết nối: kiểm tra Health Connect khả dụng (Android) rồi xin quyền.
+  /// Trả về kết quả cụ thể để UI hướng dẫn đúng bước tiếp theo.
+  Future<ConnectResult> connect() async {
+    if (!isSupportedPlatform) return ConnectResult.permissionDenied;
+    final health = await _instance;
+    try {
+      if (Platform.isAndroid &&
+          !await health.isHealthConnectAvailable()) {
+        return ConnectResult.needInstall;
+      }
+    } catch (_) {
+      return ConnectResult.needInstall;
+    }
+    _authorized = await _request();
+    return _authorized ? ConnectResult.connected : ConnectResult.permissionDenied;
+  }
+
+  /// Xin quyền (hiện dialog hệ thống). Idempotent — đã cấp thì trả true ngay.
+  Future<bool> _request() async {
+    final health = await _instance;
+    try {
+      return await health.requestAuthorization(
+        _readTypes,
+        permissions: _readAccess,
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Mở trang cài đặt/cài đặt Health Connect trên CH Play.
+  Future<void> openHealthConnectInstall() async {
+    final health = await _instance;
+    try {
+      await health.installHealthConnect();
+    } catch (_) {}
+  }
+
   /// Kiểm tra đã cấp quyền chưa (không hiện dialog).
+  /// hasPermissions đôi khi báo sai false → xác nhận lại bằng 1 query thật.
   Future<bool> isAuthorized() async {
     if (!isSupportedPlatform) return false;
     final health = await _instance;
     try {
       final granted =
           await health.hasPermissions(_readTypes, permissions: _readAccess);
-      return granted ?? false;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  static const _readAccess = [
-    HealthDataAccess.READ,
-    HealthDataAccess.READ,
-    HealthDataAccess.READ,
-    HealthDataAccess.READ,
-    HealthDataAccess.READ,
-  ];
-
-  /// Xin quyền (hiện dialog hệ thống). Trả về true nếu được cấp.
-  Future<bool> requestAuthorization() async {
-    if (!isSupportedPlatform) return false;
-    final health = await _instance;
+      if (granted == true) return true;
+    } catch (_) {}
+    // Fallback: thử query thật sự — nếu không văng lỗi thì coi như có quyền.
+    final now = DateTime.now();
     try {
-      _authorized = await health.requestAuthorization(
-        _readTypes,
-        permissions: _readAccess,
+      await health.getHealthDataFromTypes(
+        types: [HealthDataType.STEPS],
+        startTime: now.subtract(const Duration(days: 1)),
+        endTime: now,
       );
-      return _authorized;
-    } catch (e) {
+      return true;
+    } catch (_) {
       return false;
     }
   }
@@ -84,9 +125,6 @@ class HealthDeviceService {
   Future<DailyDeviceHealth> fetchDay(DateTime day) async {
     if (!isSupportedPlatform) return DailyDeviceHealth.empty;
     final health = await _instance;
-    if (!_authorized && !await isAuthorized()) {
-      return DailyDeviceHealth.empty;
-    }
     final start = DateTime(day.year, day.month, day.day);
     final end = start.add(const Duration(days: 1));
 
@@ -135,10 +173,10 @@ class HealthDeviceService {
   }
 
   /// Đọc tổng calo vận động nhiều ngày (cho biểu đồ 7/30 ngày).
-  Future<Map<DateTime, int>> fetchDailyActiveCalories(List<DateTime> days) async {
+  Future<Map<DateTime, int>> fetchDailyActiveCalories(
+      List<DateTime> days) async {
     if (!isSupportedPlatform || days.isEmpty) return {};
     final health = await _instance;
-    if (!_authorized && !await isAuthorized()) return {};
 
     final start = DateTime(days.first.year, days.first.month, days.first.day);
     final end = DateTime(days.last.year, days.last.month, days.last.day)

@@ -11,6 +11,7 @@ import '../../features/health/screens/weight_screen.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/money/screens/categories_screen.dart';
 import '../../features/money/screens/transaction_form_screen.dart';
+import '../../features/nutrition/screens/barcode_scan_screen.dart';
 import '../../features/nutrition/screens/food_scan_screen.dart';
 import '../../features/nutrition/screens/manual_food_screen.dart';
 import '../../features/nutrition/screens/nutrition_day_screen.dart';
@@ -83,6 +84,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (_, _) => const NutritionDayScreen(),
         routes: [
           GoRoute(path: 'scan', builder: (_, _) => const FoodScanScreen()),
+          GoRoute(
+              path: 'scan-barcode',
+              builder: (_, _) => const BarcodeScanScreen()),
           GoRoute(path: 'manual', builder: (_, _) => const ManualFoodScreen()),
         ],
       ),

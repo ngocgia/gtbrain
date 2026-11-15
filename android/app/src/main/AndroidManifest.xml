@@ -4,6 +4,8 @@
     <!-- Nhắc uống nước: notification (Android 13+) & exact alarm (Android 12+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <!-- Quét mã vạch (mobile_scanner) -->
+    <uses-permission android:name="android.permission.CAMERA"/>
     <!-- Health Connect: đọc dữ liệu sức khỏe -->
     <uses-permission android:name="android.permission.health.READ_STEPS"/>
     <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED"/>
@@ -12,7 +14,7 @@
     <uses-permission android:name="android.permission.health.READ_DISTANCE"/>
 
     <application
-        android:label="Vita"
+        android:label="GTBrain"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

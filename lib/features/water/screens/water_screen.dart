@@ -15,7 +15,9 @@ class WaterScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final today = DateTime.now();
+    // Key ổn định trong ngày — tránh family provider tạo instance mới
+    // (fetch lại từ đầu) mỗi lần rebuild.
+    final today = startOfDay(DateTime.now());
     final waterAsync = ref.watch(waterDayProvider(today));
     final profile = ref.watch(profileProvider).value;
     final theme = Theme.of(context);

@@ -1,9 +1,18 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../data/supabase_provider.dart';
 import '../data/auth_repository.dart';
 import '../models/profile.dart';
+
+/// Web Client ID của Google (cấu hình trong file env — xem env.example).
+/// Null nếu chưa cấu hình → ẩn nút đăng nhập Google.
+String? get googleWebClientId {
+  final v = dotenv.env['GOOGLE_WEB_CLIENT_ID'];
+  return (v == null || v.trim().isEmpty || v.contains('your-')) ? null : v;
+}
 
 final authRepositoryProvider =
     Provider<AuthRepository>((ref) => AuthRepository(ref.watch(supabaseProvider)));
@@ -43,6 +52,43 @@ class AuthController extends Notifier<bool> {
       return _authMessage(e);
     } catch (e) {
       return 'Không kết nối được máy chủ. Kiểm tra internet và thử lại.';
+    } finally {
+      state = false;
+    }
+  }
+
+  /// Đăng nhập bằng Google: lấy idToken từ Google → đổi sang session Supabase.
+  /// Trả về null nếu thành công, ngược lại là thông báo lỗi.
+  Future<String?> signInWithGoogle() async {
+    if (_loading) return null;
+    final webClientId = googleWebClientId;
+    if (webClientId == null) {
+      return 'Đăng nhập Google chưa được cấu hình (GOOGLE_WEB_CLIENT_ID).';
+    }
+    state = true;
+    try {
+      final googleSignIn = GoogleSignIn.instance;
+      await googleSignIn.initialize(serverClientId: webClientId);
+      final account = await googleSignIn.authenticate();
+      final idToken = account.authentication.idToken;
+      if (idToken == null) {
+        return 'Không lấy được mã đăng nhập Google. Thử lại nhé.';
+      }
+      await ref.read(supabaseProvider).auth.signInWithIdToken(
+            provider: OAuthProvider.google,
+            idToken: idToken,
+          );
+      ref.invalidate(profileProvider);
+      return null;
+    } on GoogleSignInException catch (e) {
+      // User bấm hủy — không hiện báo lỗi.
+      final canceled = e.code.name.toLowerCase().contains('cancel');
+      if (canceled) return '__canceled__';
+      return 'Đăng nhập Google thất bại: ${e.description ?? e.code.name}';
+    } on AuthException catch (e) {
+      return _authMessage(e);
+    } catch (e) {
+      return 'Đăng nhập Google thất bại: $e';
     } finally {
       state = false;
     }

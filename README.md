@@ -1,4 +1,4 @@
-# Vita — Sức khỏe & Tài chính
+# GTBrain — Sức khỏe & Tài chính
 
 Ứng dụng mobile (Flutter) theo dõi sức khỏe cá nhân kết hợp quản lý tài chính:
 
@@ -69,3 +69,20 @@ flutter analyze
 ## Tài khoản test đã tạo trên Supabase
 
 - `e2e.tester.vita@gmail.com` / `VitaTest123456` — dùng để kiểm thử đăng nhập nhanh
+
+## Bật đăng nhập Google (tùy chọn)
+
+Nút "Tiếp tục với Google" tự ẩn cho đến khi cấu hình xong. Các bước:
+
+1. **Google Cloud Console** ([console.cloud.google.com](https://console.cloud.google.com)):
+   - Tạo project (hoặc dùng project có sẵn) → *APIs & Services* → *OAuth consent screen* → External → điền tên app GTBrain → thêm test user là email của bạn
+   - *Credentials* → *Create credentials* → **OAuth client ID** → loại **Android**: nhập package `com.gtbrain.vita` và SHA-1 debug: `88:A2:AC:EC:1F:68:94:BE:16:C5:E2:41:B3:6D:0B:BE:0F:0F:B8:B1`
+   - Tạo thêm 1 client ID loại **Web application** → copy **Client ID** (dạng `...apps.googleusercontent.com`)
+2. **Supabase Dashboard** → *Authentication* → *Providers* → **Google** → bật, dán **Secret** (từ GCP client Web) và thêm **Authorized Client IDs** = Client ID Android ở trên
+3. Thêm vào file `env`:
+   ```
+   GOOGLE_WEB_CLIENT_ID=<web client id>.apps.googleusercontent.com
+   ```
+4. `flutter build apk --release` — nút Google sẽ hiện ở màn đăng nhập/đăng ký.
+
+> Lưu ý: mỗi máy tính có SHA-1 debug khác nhau; khi build từ máy khác hoặc build release bằng keystore riêng, cần thêm SHA-1 tương ứng vào GCP.

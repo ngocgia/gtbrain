@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/profile.dart';
@@ -72,5 +74,28 @@ class AuthRepository {
       'user_id': userId,
       'weight_kg': weightKg,
     });
+  }
+
+  /// Upload ảnh đại diện (upsert đè ảnh cũ) → trả public URL.
+  Future<String> uploadAvatar(Uint8List bytes) async {
+    final uid = _client.auth.currentUser!.id;
+    final path = '$uid/avatar.jpg';
+    await _client.storage.from('avatars').uploadBinary(
+          path,
+          bytes,
+          fileOptions: const FileOptions(
+            contentType: 'image/jpeg',
+            upsert: true,
+          ),
+        );
+    return _client.storage.from('avatars').getPublicUrl(path);
+  }
+
+  /// Lưu URL ảnh đại diện vào profile.
+  Future<void> setAvatarUrl(String url) async {
+    await _client.from('profiles').update({
+      'avatar_url': url,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', _client.auth.currentUser!.id);
   }
 }

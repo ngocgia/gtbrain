@@ -5,6 +5,8 @@ import '../data/health_repository.dart';
 import '../models/activity_log.dart';
 import '../services/health_device_service.dart';
 
+export '../services/health_device_service.dart' show ConnectResult;
+
 final healthRepositoryProvider = Provider<HealthRepository>(
     (ref) => HealthRepository(ref.watch(supabaseProvider)));
 
@@ -43,12 +45,16 @@ class HealthController extends Notifier<bool> {
   @override
   bool build() => false;
 
-  Future<bool> connectDevice() async {
+  Future<ConnectResult> connectDevice() async {
     final service = ref.read(healthDeviceServiceProvider);
-    final ok = await service.requestAuthorization();
+    final result = await service.connect();
     ref.invalidate(deviceConnectionProvider);
-    return ok;
+    return result;
   }
+
+  /// Mở CH Play cài/cập nhật Health Connect.
+  Future<void> openHealthConnectInstall() =>
+      ref.read(healthDeviceServiceProvider).openHealthConnectInstall();
 
   Future<void> addActivity(ActivityLog log) async {
     await ref.read(healthRepositoryProvider).addActivity(log);

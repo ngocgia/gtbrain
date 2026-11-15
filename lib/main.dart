@@ -10,6 +10,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/theme_mode_provider.dart';
+import 'core/theme/theme_seed_provider.dart';
+import 'features/money/services/finance_notification_service.dart';
 import 'features/water/services/water_notification_service.dart';
 
 Future<void> main() async {
@@ -36,32 +38,37 @@ Future<void> main() async {
     startupError = e;
   }
 
-  // Lỗi notification không chặn app — tính năng nhắc uống nước bị vô hiệu.
+  // Lỗi notification không chặn app — các tính năng nhắc bị vô hiệu.
   try {
     await WaterNotificationService.instance.init();
+  } catch (_) {}
+  // Lên lại lịch nhắc thu chi (nếu người dùng đã bật) sau mỗi lần mở app.
+  try {
+    await FinanceNotificationService.instance.restore();
   } catch (_) {}
 
   runApp(
     ProviderScope(
       child:
-          startupError == null ? const VitaApp() : StartupErrorApp(error: startupError),
+          startupError == null ? const GTBrainApp() : StartupErrorApp(error: startupError),
     ),
   );
 }
 
-class VitaApp extends ConsumerWidget {
-  const VitaApp({super.key});
+class GTBrainApp extends ConsumerWidget {
+  const GTBrainApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final seed = Color(ref.watch(themeSeedProvider));
 
     return MaterialApp.router(
-      title: 'Vita — Sức khỏe & Tài chính',
+      title: 'GTBrain — Sức khỏe & Tài chính',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
+      theme: AppTheme.lightFromSeed(seed),
+      darkTheme: AppTheme.darkFromSeed(seed),
       themeMode: themeMode,
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
@@ -86,8 +93,8 @@ class StartupErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Vita',
-      theme: AppTheme.light,
+      title: 'GTBrain',
+      theme: AppTheme.lightFromSeed(AppTheme.defaultSeed),
       home: Scaffold(
         body: Center(
           child: Padding(

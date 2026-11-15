@@ -17,7 +17,8 @@ class HomeDashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final profile = ref.watch(profileProvider).value;
-    final today = DateTime.now();
+    // Dùng đầu-ngày làm key cho các family provider — ổn định trong ngày.
+    final today = startOfDay(DateTime.now());
 
     final nutrition = ref.watch(nutritionDayProvider(today));
     final water = ref.watch(waterDayProvider(today));
@@ -193,28 +194,40 @@ class _CalorieCard extends StatelessWidget {
           child: Row(
             children: [
               SizedBox(
-                width: 96,
-                height: 96,
+                // Vòng tròn lớn để chữ "XXX kcal còn" nằm gọn bên trong.
+                width: 136,
+                height: 136,
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    CircularProgressIndicator(
-                      value: inPct,
-                      strokeWidth: 10,
-                      strokeCap: StrokeCap.round,
-                      color: theme.colorScheme.primary,
-                      backgroundColor:
-                          theme.colorScheme.surfaceContainerHighest,
+                    SizedBox(
+                      width: 136,
+                      height: 136,
+                      child: CircularProgressIndicator(
+                        value: inPct,
+                        strokeWidth: 13,
+                        strokeCap: StrokeCap.round,
+                        color: theme.colorScheme.primary,
+                        backgroundColor:
+                            theme.colorScheme.surfaceContainerHighest,
+                      ),
                     ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('$remaining',
-                            style: theme.textTheme.titleLarge
-                                ?.copyWith(fontWeight: FontWeight.w800)),
-                        Text('kcal còn',
-                            style: theme.textTheme.bodySmall),
-                      ],
+                    // FittedBox tự co chữ để luôn vừa vòng tròn trong.
+                    Padding(
+                      padding: const EdgeInsets.all(18),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('$remaining',
+                                style: theme.textTheme.headlineMedium
+                                    ?.copyWith(fontWeight: FontWeight.w800)),
+                            Text('kcal còn',
+                                style: theme.textTheme.bodySmall),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -271,16 +284,30 @@ class _CalRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    // Nhãn 1 dòng, giá trị xuống dòng dưới (đậm) — tránh chen lấn 1 hàng.
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(label,
-              style: Theme.of(context).textTheme.bodySmall),
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Icon(icon, size: 18, color: color),
         ),
-        Text(value,
-            style: const TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: theme.textTheme.bodySmall),
+              const SizedBox(height: 1),
+              Text(
+                value,
+                style: theme.textTheme.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

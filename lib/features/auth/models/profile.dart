@@ -4,6 +4,7 @@ import '../../../core/utils/health_calculations.dart';
 class Profile {
   final String id;
   final String? fullName;
+  final String? avatarUrl;
   final Gender gender;
   final DateTime? birthDate;
   final double? heightCm;
@@ -18,6 +19,7 @@ class Profile {
   Profile({
     required this.id,
     this.fullName,
+    this.avatarUrl,
     this.gender = Gender.male,
     this.birthDate,
     this.heightCm,
@@ -54,6 +56,7 @@ class Profile {
   factory Profile.fromMap(Map<String, dynamic> map) => Profile(
         id: map['id'] as String,
         fullName: map['full_name'] as String?,
+        avatarUrl: map['avatar_url'] as String?,
         gender: genderFromDb(map['gender'] as String?),
         birthDate: map['birth_date'] == null
             ? null
@@ -72,6 +75,7 @@ class Profile {
 
   Map<String, dynamic> toMap({bool includeOnboarding = true}) => {
         if (fullName != null) 'full_name': fullName,
+        if (avatarUrl != null) 'avatar_url': avatarUrl,
         'gender': gender.dbValue,
         if (birthDate != null)
           'birth_date': birthDate!.toIso8601String().substring(0, 10),
@@ -86,6 +90,7 @@ class Profile {
 
   Profile copyWith({
     String? fullName,
+    String? avatarUrl,
     Gender? gender,
     DateTime? birthDate,
     double? heightCm,
@@ -99,6 +104,7 @@ class Profile {
       Profile(
         id: id,
         fullName: fullName ?? this.fullName,
+        avatarUrl: avatarUrl ?? this.avatarUrl,
         gender: gender ?? this.gender,
         birthDate: birthDate ?? this.birthDate,
         heightCm: heightCm ?? this.heightCm,

@@ -14,7 +14,10 @@ class HomeShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: HomeShellView(child: _bodyFor(_currentIndex(context))),
+      // SafeArea tránh nội dung chui dưới thanh trạng thái.
+      body: SafeArea(
+        child: HomeShellView(child: _bodyFor(_currentIndex(context))),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex(context),
         onDestinationSelected: (i) => context.go('/${_paths[i]}'),

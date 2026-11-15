@@ -26,6 +26,17 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     super.dispose();
   }
 
+  Future<void> _googleSignIn() async {
+    final err = await ref
+        .read(authControllerProvider.notifier)
+        .signInWithGoogle();
+    if (err == null || err == '__canceled__') return;
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(err)));
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final message = await ref.read(authControllerProvider.notifier).signUp(
@@ -113,6 +124,17 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           : const Text('Đăng ký'),
                     ),
                     const SizedBox(height: 12),
+                    if (googleWebClientId != null) ...[
+                      const SizedBox(height: 10),
+                      OutlinedButton.icon(
+                        onPressed: loading ? null : _googleSignIn,
+                        icon: const Text('G',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 18)),
+                        label: const Text('Đăng ký bằng Google'),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
                     TextButton(
                       onPressed: () => context.go('/login'),
                       child: const Text('Đã có tài khoản? Đăng nhập'),
