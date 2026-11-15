@@ -1,0 +1,33 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+coverage/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+
+# Secrets & env (file env không dấu chấm — Flutter không bundle file ẩn)
+env
+.env
+*.env
+!env.example
+
+# Supabase local
+supabase/.temp/
+supabase/.branches/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Firebase (nếu dùng sau này)
+firebase.json
+.firebaserc
